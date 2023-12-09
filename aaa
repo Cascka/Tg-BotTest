@@ -6,7 +6,9 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeybo
 from aiogram.types.message import ContentType
 from aiogram import Bot, Dispatcher, executor, types
 
-API_TOKEN = "6811291155:AAGbhYcm7f3rk_cth3k5n1Xr-7tkYHAzmOo"
+from functional.functions import User
+
+API_TOKEN = "6811291155:AAGbhYcm7f3rk_cth3k5n1Xr-7tkYHAzmOo"  # ваш токен
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
@@ -15,49 +17,52 @@ KB1 = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
 kb1_1 = KeyboardButton("/help")
 kb1_2 = KeyboardButton("/🌠")
 kb1_3 = KeyboardButton("/🌤")
-KB1.add(kb1_1)
+kb1_4 = KeyboardButton("/reg")
+KB1.add(kb1_1).insert(kb1_4)
 KB1.add(kb1_3).insert(kb1_2)
 
-KB3 = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-kb3_1 = KeyboardButton("/go")
-kb3_2 = KeyboardButton("/search")
-KB3.add(kb3_1).add(kb3_2)
+KB2 = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+kb2_1 = KeyboardButton("/name-age")
+kb2_2 = KeyboardButton("/password")
+kb3_3 = KeyboardButton("/start")
 
 user_text = None
+user_log: User = None
+users: list = []
 
-KB4 = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-KB4 = KeyboardButton("/")
-KB4.add(kb4_1).add(kb4_2)
 
 def gen_photo_url(word: str) -> str:
     return "https://yandex.ru/images/search?text=" + word
 
+
 def gen_weather_outer(city):
     return "https://yandex.ru/weather/ru-RU/" + city + "/details"
 
-def gen_video_url(word: str) -> str:
-    return "https://www.youtube.com/search?text="
+
+def gen_video_url(word):
+    return "https://www.youtube.com/results?search_query=" + word
 
 
 @dp.message_handler(commands=['start'])
 async def send_welcome(message: types.Message):
     await bot.send_message(chat_id=message.from_user.id,
-                           text="короткий текст от себя",
+                           text="короткий текс от себя",
                            parse_mode="html",
                            reply_markup=KB1)
     await message.delete()
 
-
-@dp.message_handler(commands=['help'])
-async def send_help(message: types.Message):
- await bot.send_message(chat_id=message.from_user.id,
-                        text="бубжидубжизус",
-                        parse_mode="html",
-                        reply_markup=KB1)
+@dp.message_handler(commands=['reg'])
+async def send_welcome(message: types.Message):
+    await bot.send_message(chat_id=message.from_user.id,
+                           text="введите свое имя и возраст и нажмите команду /reg_user",
+                           parse_mode="html",
+                           reply_markup=KB2)
+    await message.delete()
 
 @dp.message_handler()
 async def echo(message: types.Message):
     global user_text
+    global user_log
     if message.text[0] != '/':
         user_text = message.text
     elif message.text == '/🌠':
@@ -78,9 +83,29 @@ async def echo(message: types.Message):
                                    text=gen_weather_outer(user_text))
             await message.delete()
             user_text = None
-    else:
-        await bot.send_message(chat_id=message.from_user.id,
-                               video=gen_video_url(user_text))
+    elif message.text == '/reg_user':
+        if user_text is None:
+            await bot.send_message(chat_id=message.from_user.id,
+                                   text="вы еще ничего не ввели")
+        else:
+            us = user_text.split()
+            user_log = User(us[0], int(us[1]))
+            await bot.send_message(chat_id=message.from_user.id,
+                                   text=f"Господин {us[0]} вы успешно зарегестрированы, "
+                                        f"осталось ввести пароль и вызвать команду /password")
+            user_text = None
+    elif message.text == '/password':
+        if user_text is None:
+            await bot.send_message(chat_id=message.from_user.id,
+                                   text="вы еще ничего не ввели")
+        else:
+            user_log.save_user_password(user_text)
+            await bot.send_message(chat_id=message.from_user.id,
+                                   text="Пароль сохранен",
+                                   reply_markup=KB1)
+            user_text = None
+            user_log.user_write()
+
 
 
 if __name__ == "__main__":
